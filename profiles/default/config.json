@@ -1,0 +1,22 @@
+{
+  "model": "MiniMax-M2.7-highspeed",
+  "provider": "anthropic",
+  "apiKey": "",
+  "baseUrl": "https://api.minimaxi.com/anthropic/v1",
+  "temperature": 0.3,
+  "maxTokens": 4096,
+  "maxIterations": 100,
+  "profile": "default",
+  "fallbackProviders": [
+    {
+      "provider": "anthropic",
+      "model": "kimi-k2-turbo-preview",
+      "apiKey": "",
+      "baseUrl": "https://modelservice.jdcloud.com/coding/anthropic/v1"
+    }
+  ],
+  "enableRetry": true,
+  "maxRetries": 3,
+  "requestTimeout": 90000,
+  "maxContextMessages": 100
+}

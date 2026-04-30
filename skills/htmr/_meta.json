@@ -1,0 +1,8 @@
+{
+  "name": "htmr",
+  "version": "1.0.0",
+  "description": "Hyper Terminal Resource Manager - Monitor and manage system resources in terminal",
+  "author": "MAXIA",
+  "tags": ["terminal", "monitoring", "system", "resources", "cli"],
+  "license": "MIT"
+}

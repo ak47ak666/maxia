@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>马虾 MAXIA - 本地AI助手</title>
+  <meta name="color-scheme" content="dark light">
+  <link rel="icon" href="/maxia.png">
+  <link rel="stylesheet" href="/index.css">
+</head>
+<body>
+  <div class="app">
+    <!-- 侧边栏 -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <img src="/maxia.png" alt="MAXIA" class="logo-img">
+          <span class="logo-text">MAXIA</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section">
+          <div class="nav-section-title">会话</div>
+          <a class="nav-item active" data-page="chat">
+            <img src="/liaotian.png" class="nav-icon-img">
+            <span class="nav-text">聊天</span>
+          </a>
+          <a class="nav-item" data-page="history">
+            <img src="/lishi.png" class="nav-icon-img">
+            <span class="nav-text">历史</span>
+          </a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">工具</div>
+          <a class="nav-item" data-page="tools">
+            <img src="/caozuo.png" class="nav-icon-img">
+            <span class="nav-text">文件操作</span>
+          </a>
+        </div>
+
+        <div class="nav-section">
+          <div class="nav-section-title">设置</div>
+          <a class="nav-item" data-page="config">
+            <img src="/peizhi.png" class="nav-icon-img">
+            <span class="nav-text">配置</span>
+          </a>
+          <a class="nav-item" data-page="skills-install">
+            <img src="/anzhuang.png" class="nav-icon-img">
+            <span class="nav-text">安装Skills</span>
+          </a>
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="status">
+          <span class="status-dot"></span>
+          <span class="status-text">就绪</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 主内容区 -->
+    <main class="main-content">
+      <!-- 聊天页面 -->
+      <div class="page active" id="page-chat">
+        <div class="chat-header">
+          <div class="chat-header-info">
+            <p class="chat-header-desc"><img src="/liaotian.png" class="header-desc-icon">我是你的本地AI助手，可以帮你完成各种任务</p>
+          </div>
+          <button class="btn btn-secondary" onclick="showConfig()"><img src="/peizhi.png" class="btn-icon-img">配置</button>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+          <div class="welcome-message"></div>
+        </div>
+        <div id="chatFooter" class="chat-footer" style="display: none;">
+          <button class="btn btn-secondary" onclick="startNewChat()">➕ 开始新聊天</button>
+        </div>
+        <!-- 任务列表 -->
+        <div class="task-list" id="taskList">
+          <div class="task-list-header">🔄 执行中的任务</div>
+          <div class="task-list-content" id="taskListContent"></div>
+        </div>
+        <div class="chat-input-area">
+          <input type="text" id="chatInput" placeholder="输入消息后按回车发送..." autocomplete="off">
+          <button class="btn btn-primary" onclick="sendMessage()">发送</button>
+        </div>
+      </div>
+
+      <!-- 配置页面 -->
+      <div class="page" id="page-config">
+        <div class="page-header">
+          <h1><img src="/peizhi.png" class="page-title-icon">配置</h1>
+          <button class="btn btn-secondary" onclick="showChat()">返回聊天</button>
+        </div>
+        <div class="config-form">
+          <div class="form-section">
+            <h3>API设置</h3>
+            <div class="form-group">
+              <label>提供商</label>
+              <select id="config-provider">
+                <option value="openai">OpenAI</option>
+                <option value="anthropic">Anthropic</option>
+                <option value="ollama">Ollama</option>
+                <option value="custom">自定义</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>API 地址</label>
+              <input type="text" id="config-baseUrl" placeholder="https://api.openai.com/v1">
+            </div>
+            <div class="form-group">
+              <label>API Key</label>
+              <input type="password" id="config-apiKey" placeholder="sk-...">
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3>模型设置</h3>
+            <div class="form-group">
+              <label>模型</label>
+              <input type="text" id="config-model" placeholder="gpt-4">
+            </div>
+            <div class="form-group">
+              <label>温度 (0-2)</label>
+              <input type="number" id="config-temperature" min="0" max="2" step="0.1" value="0.7">
+            </div>
+            <div class="form-group">
+              <label>最大Token</label>
+              <input type="number" id="config-maxTokens" value="4096">
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3>容错设置</h3>
+            <div class="form-group">
+              <label>
+                <input type="checkbox" id="config-enableRetry" checked>
+                启用自动重试
+              </label>
+            </div>
+            <div class="form-group">
+              <label>最大重试次数</label>
+              <input type="number" id="config-maxRetries" value="3" min="1" max="10">
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3>备用模型配置</h3>
+            <p class="hint">当主模型不可用时，自动切换到备用模型</p>
+            <div id="fallbackProviders">
+              <!-- 动态生成的备用模型列表 -->
+            </div>
+            <button type="button" class="btn btn-secondary" onclick="addFallbackProvider()">➕ 添加备用模型</button>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="saveConfig()">保存配置</button>
+            <button class="btn btn-secondary" onclick="resetConfig()">重置默认</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 工具页面 -->
+      <div class="page" id="page-tools">
+        <div class="page-header">
+          <h1><img src="/caozuo.png" class="page-title-icon">可用工具</h1>
+        </div>
+        <div class="tools-list" id="toolsList">
+          <div class="loading">加载中...</div>
+        </div>
+      </div>
+
+      <!-- 历史页面 -->
+      <div class="page" id="page-history">
+        <div class="page-header">
+          <h1><img src="/lishi.png" class="page-title-icon">对话历史</h1>
+        </div>
+        <div class="history-list" id="historyList">
+          <div class="empty-state">
+            <p>暂无历史记录</p>
+            <p class="hint">开始对话后会自动保存</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Skills安装页面 -->
+      <div class="page" id="page-skills-install">
+        <div class="page-header">
+          <h1><img src="/anzhuang.png" class="page-title-icon">安装Skills</h1>
+        </div>
+        <div class="skills-install-container">
+          <div class="drop-zone" id="dropZone">
+            <div class="drop-zone-content">
+              <div class="drop-zone-icon">📦</div>
+              <div class="drop-zone-text">拖拽 Skills 压缩包到这里</div>
+              <div class="drop-zone-hint">或者点击选择文件</div>
+              <div class="drop-zone-formats">支持 .zip 格式</div>
+            </div>
+            <input type="file" id="fileInput" accept=".zip" style="display: none;">
+          </div>
+          <div class="install-result" id="installResult"></div>
+          <div class="installed-skills">
+            <h3>已安装的Skills</h3>
+            <div class="skills-list" id="installedSkillsList"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/index.js"></script>
+</body>
+</html>

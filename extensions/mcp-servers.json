@@ -1,0 +1,17 @@
+{
+  "$schema": "https://maxia.github.io/schemas/mcp-servers.json",
+  "servers": [
+    {
+      "name": "filesystem",
+      "url": "http://localhost:3001/mcp",
+      "enabled": false,
+      "description": "文件系统MCP服务器"
+    },
+    {
+      "name": "github",
+      "url": "http://localhost:3002/mcp",
+      "enabled": false,
+      "description": "GitHub MCP服务器"
+    }
+  ]
+}
