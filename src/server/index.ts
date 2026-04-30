@@ -31,7 +31,7 @@ const __filename = fileURLToPath(import.meta.url);
 const PROJECT_ROOT = path.join(path.dirname(__filename), '../..');
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PORT = 3007;
+const PORT = 3006;
 const PUBLIC_DIR = path.join(__dirname, '../../public');
 const SESSIONS_DIR = path.join(PROJECT_ROOT, 'sessions');
 const SKILLS_DIR = path.join(PROJECT_ROOT, 'skills');
