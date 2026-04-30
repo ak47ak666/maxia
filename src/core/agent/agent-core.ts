@@ -141,9 +141,23 @@ export class AgentCore {
       this.iterationCount++;
 
       const messages = await this.contextManager.buildMessages();
-      const tools = this.toolRegistry.getToolsSpec();
 
-      logger.info({ toolsCount: tools.length }, '调用LLM');
+      // 智能筛选工具 - 只发送最相关的少量工具，减少 token 消耗
+      // 如果是第二轮及以后，说明有上下文，只需要发送核心工具
+      const lastUserMessage = messages.filter(m => m.role === 'user').pop()?.content || '';
+      let tools = lastUserMessage
+        ? this.toolRegistry.getRelevantTools(lastUserMessage)
+        : this.toolRegistry.getToolsSpec();
+
+      // 如果工具太多，优先保留最常用的基础工具
+      if (tools.length > 15) {
+        const essentialTools = ['read_file', 'write_file', 'create_directory', 'list_directory', 'execute_command'];
+        const essential = tools.filter(t => essentialTools.includes(t.name));
+        const others = tools.filter(t => !essentialTools.includes(t.name));
+        tools = [...essential, ...others].slice(0, 15);
+      }
+
+      logger.info({ toolsCount: tools.length, messagePreview: lastUserMessage.substring(0, 50) }, '调用LLM');
 
       const response = await this.resilience.executeWithResilience(
         (candidate) => this.llmCaller.call(messages, tools, candidate)
@@ -236,17 +250,22 @@ export class AgentCore {
           timestamp: Date.now(),
         });
 
-        // 检查是否可以退出：如果连续2次文本响应且之前有成功的工具调用
-        if (this.consecutiveTextResponses >= 2) {
-          const hasToolCalls = this.contextManager.getMessages().some(m => m.role === 'tool');
-          if (hasToolCalls) {
-            logger.info({ consecutiveTextResponses: this.consecutiveTextResponses }, '工具调用完成后收到文本响应，准备退出');
-            return finalResponse || '任务已完成（工具调用完毕）';
+        // 智能退出逻辑：如果之前有成功的工具调用，并且这次回复明确表示任务完成，则退出
+        const hasToolCalls = this.contextManager.getMessages().some(m => m.role === 'tool');
+        if (hasToolCalls) {
+          // 检查是否包含完成相关的关键词
+          const completionKeywords = ['完成', '已创建', '已生成', '已修改', 'success', 'done', 'completed', 'finished', 'ready', '已就绪'];
+          const isCompletionResponse = completionKeywords.some(kw => content.toLowerCase().includes(kw.toLowerCase()));
+
+          // 如果之前有过工具调用，且这次回复表示完成，或连续3次文本响应，则退出
+          if (isCompletionResponse || this.consecutiveTextResponses >= 3) {
+            logger.info({ consecutiveTextResponses: this.consecutiveTextResponses }, '任务完成，准备退出');
+            return finalResponse || '任务已完成';
           }
         }
 
         // 从未调用过工具且连续5次文本响应，认为任务不需要工具
-        if (this.consecutiveTextResponses >= 5) {
+        if (this.consecutiveTextResponses >= 5 && !hasToolCalls) {
           return finalResponse || '任务已完成（无文件操作需求）';
         }
 

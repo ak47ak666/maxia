@@ -5,7 +5,7 @@
   "baseUrl": "https://api.minimaxi.com/anthropic/v1",
   "temperature": 0.3,
   "maxTokens": 4096,
-  "maxIterations": 100,
+  "maxIterations": 30,
   "profile": "default",
   "fallbackProviders": [
     {
@@ -16,7 +16,7 @@
     }
   ],
   "enableRetry": true,
-  "maxRetries": 3,
+  "maxRetries": 1,
   "requestTimeout": 90000,
-  "maxContextMessages": 100
+  "maxContextMessages": 50
 }

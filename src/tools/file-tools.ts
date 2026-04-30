@@ -283,13 +283,45 @@ export class SearchFilesTool extends BaseTool {
     const { directory, pattern, maxResults = 100 } = args as { directory: string; pattern: string; maxResults?: number };
 
     try {
-      const { stdout } = await execAsync(`find "${directory}" -name "${pattern}" -type f 2>/dev/null | head -${maxResults}`);
-      const files = stdout.trim().split('\n').filter(Boolean);
+      // 将通配符转换为正则表达式
+      const regexPattern = pattern
+        .replace(/\./g, '\\.')
+        .replace(/\*/g, '.*')
+        .replace(/\?/g, '.');
+
+      const results: string[] = [];
+
+      const searchDir = async (dir: string): Promise<void> => {
+        if (results.length >= maxResults) return;
+
+        try {
+          const entries = await fs.readdir(dir, { withFileTypes: true });
+
+          for (const entry of entries) {
+            if (results.length >= maxResults) break;
+
+            const fullPath = path.join(dir, entry.name);
+
+            if (entry.isDirectory()) {
+              await searchDir(fullPath);
+            } else if (entry.isFile()) {
+              if (new RegExp(regexPattern).test(entry.name)) {
+                results.push(fullPath);
+              }
+            }
+          }
+        } catch {
+          // 忽略访问权限错误
+        }
+      };
+
+      await searchDir(directory);
+
       return this.createSuccessResult({
         directory,
         pattern,
-        files,
-        count: files.length,
+        files: results,
+        count: results.length,
       });
     } catch (error) {
       return this.createErrorResult(`搜索文件失败: ${(error as Error).message}`);

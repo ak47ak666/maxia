@@ -35,6 +35,7 @@ export interface ToolDefinition {
   description: string;
   parameters: ToolParameter[];
   category?: string;
+  keywords?: string[];  // 关键词，用于智能筛选
 }
 
 // 工具参数

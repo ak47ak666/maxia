@@ -235,6 +235,18 @@ async function handleAPI(req: http.IncomingMessage, res: http.ServerResponse, pa
               maxRetries: config.maxRetries ?? 3,
             });
 
+            // 加载会话历史消息，避免AI"失忆"
+            for (const msg of session.messages) {
+              if (msg.role !== 'system') {
+                agent.addMessage({
+                  id: msg.id,
+                  role: msg.role as 'user' | 'assistant' | 'tool',
+                  content: msg.content,
+                  timestamp: msg.timestamp,
+                });
+              }
+            }
+
             // 订阅agent事件，用于进度跟踪
             const unsub = agent.onEvent((event) => {
               if (event.type === 'tool_call') {
@@ -722,68 +734,16 @@ ${errorList.join('\n')}
     }
   } catch {}
 
-  return `你是 MAXIA，一个必须通过工具执行任务的AI助手。
+  return `你是 MAXIA，AI编程助手。收到任务后必须直接调用工具执行，禁止只用文字描述。
 
-你有以下能力：
-1. 文件操作：读取、写入、创建、删除、复制文件和目录
-2. 终端命令：执行系统命令
-3. 信息查询：获取系统信息、环境变量等${errorOutline}
+核心规则：
+- 创建/修改文件 → write_file | 创建目录 → create_directory | 执行命令 → execute_command
+- 读取文件 → read_file | 查看目录 → list_directory | 删除 → delete_file
+- 直接执行工具，不解释${errorOutline}
 
-## 核心规则（必须遵守）
+工作流程：理解需求 → 调用工具 → 根据结果继续 → 任务完成时返回结果。
 
-当你收到需要创建文件、编写代码、执行命令的任务时：
-1. 立即调用对应的工具（write_file/create_directory/execute_command）
-2. 不要先解释要做什么，直接调用工具
-3. 工具调用是强制要求，不是可选项
-
-## 强制工具使用规则
-
-**以下任务必须使用工具，禁止仅用文字描述：**
-
-| 任务类型 | 必须使用的工具 |
-|---------|--------------|
-| 创建文件 | write_file |
-| 创建目录/文件夹 | create_directory |
-| 修改文件 | write_file |
-| 删除文件 | delete_file |
-| 执行终端命令 | execute_command |
-| 读取文件内容 | read_file |
-| 查看目录列表 | list_directory |
-
-**违规行为（绝对禁止）：**
-- 用文字描述"我将创建X文件"而不实际调用write_file
-- 用文字描述"现在执行Y命令"而不实际调用execute_command
-- 解释你在做什么，而不直接执行
-
-**正确行为：**
-- 用户说"创建网站" → 直接调用create_directory创建目录
-- 用户说"创建首页" → 直接调用write_file写入index.html
-- 不要解释，直接执行工具
-
-## 工作流程
-
-1. 理解用户需求
-2. 立即调用所需工具（不要先解释）
-3. 根据工具结果决定下一步
-4. 重复直到任务完成
-
-## 判断任务完成
-
-当用户要求创建文件/网站时，只有当：
-- 所有文件已通过write_file创建
-- 所有目录已通过create_directory创建
-才算任务完成。
-
-仅仅说"已完成"不算完成，必须有实际的工具调用记录。
-
-## 错误处理
-
-当用户说"错了"、"不对"、"有问题"等时，说明用户对你的执行结果不满意
-- 此时你应该分析哪里可能出错了，记录错误：使用工具读取或创建错误文件
-- 错误文件名要简洁明了，能快速识别错误类型
-- 错误内容要包含：错误描述、错误详情（命令或代码）、可能的解决方法
-
-回答简洁明了，用中文回复。`;
+回答简洁，用中文。`;
 }
 
 // 启动服务器

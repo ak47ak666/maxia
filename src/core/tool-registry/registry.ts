@@ -60,6 +60,99 @@ export class ToolRegistry {
     return this.getAllTools().map(tool => tool.definition);
   }
 
+  // 智能筛选工具 - 根据消息内容筛选相关工具
+  getRelevantTools(message: string): ToolDefinition[] {
+    const allTools = this.getAllTools();
+    if (allTools.length === 0) return [];
+
+    const lowerMessage = message.toLowerCase();
+
+    // 计算每个工具的相关度得分
+    const scoredTools = allTools.map(tool => {
+      let score = 0;
+      const def = tool.definition;
+
+      // 1. 检查关键词匹配
+      if (def.keywords) {
+        for (const keyword of def.keywords) {
+          if (lowerMessage.includes(keyword.toLowerCase())) {
+            score += 10;
+          }
+        }
+      }
+
+      // 2. 检查工具名称匹配
+      if (lowerMessage.includes(def.name.toLowerCase())) {
+        score += 5;
+      }
+
+      // 3. 检查描述中的关键词
+      const descLower = def.description.toLowerCase();
+      const descKeywords = ['文件', 'folder', 'directory', 'create', 'delete', 'read', 'write',
+                          'git', 'commit', 'push', 'pull', 'branch',
+                          '网络', 'network', 'http', 'url', 'download',
+                          '图片', 'image', 'photo', '压缩', 'zip',
+                          '搜索', 'search', 'grep', 'find',
+                          '命令', 'command', 'terminal', 'cmd', 'bash', 'shell',
+                          '系统', 'system', 'process', '进程', 'cpu', '内存',
+                          '网站', 'web', 'html', 'css', 'js', '前端', '页面', 'page',
+                          '数据库', 'database', 'sql',
+                          'api', '接口', 'json', 'xml',
+                          '视频', 'video', '音频', 'audio', '语音',
+                          'pdf', '文档', 'document',
+                          '定时', 'cron', 'schedule', '任务',
+                          '复制', 'copy', '移动', 'move', '重命名', 'rename',
+                          '解压', 'extract', '压缩', 'compress',
+                          '目录', '文件夹', '创建', '生成', '新建', '产品', '关于', '联系'];
+
+      for (const kw of descKeywords) {
+        if (descLower.includes(kw.toLowerCase())) {
+          score += 2;
+        }
+      }
+
+      // 4. 检查category匹配
+      const categoryKeywords: Record<string, string[]> = {
+        'file': ['文件', 'folder', 'directory', 'create', 'delete', 'read', 'write', 'copy', 'move', '目录', '文件夹', '创建', '生成'],
+        'git': ['git', '版本', 'commit', 'push', 'pull', 'branch', '仓库'],
+        'web': ['网络', 'network', 'http', 'url', 'download', '网站', 'web', 'html', 'css', 'js', '页面'],
+        'media': ['图片', 'image', 'photo', '视频', 'video', '音频', 'audio'],
+        'terminal': ['命令', 'command', 'terminal', 'cmd', 'bash', 'shell', '控制台'],
+        'system': ['系统', 'system', 'process', '进程', '内存', 'cpu'],
+        'network': ['端口', 'port', '连接', 'connection', 'ping', 'dns'],
+      };
+
+      const category = def.category || '';
+      if (categoryKeywords[category]) {
+        for (const kw of categoryKeywords[category]) {
+          if (lowerMessage.includes(kw.toLowerCase())) {
+            score += 3;
+          }
+        }
+      }
+
+      return { tool: def, score };
+    });
+
+    // 过滤出得分 > 0 的工具，或者如果没有匹配则返回所有工具（基础集）
+    const relevantTools = scoredTools
+      .filter(s => s.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map(s => s.tool);
+
+    // 如果没有任何匹配，返回常用基础工具（避免无工具可用）
+    if (relevantTools.length === 0) {
+      // 返回最常用的基础工具
+      const essentialTools = ['read_file', 'write_file', 'list_directory', 'execute_command'];
+      return allTools
+        .filter(t => essentialTools.includes(t.definition.name))
+        .map(t => t.definition);
+    }
+
+    // 限制返回数量，最多返回20个最相关的工具
+    return relevantTools.slice(0, 20);
+  }
+
   // 执行工具（带超时控制）
   async execute(name: string, args: unknown, context: ToolContext, timeout?: number): Promise<ToolResult> {
     const tool = this.tools.get(name);
